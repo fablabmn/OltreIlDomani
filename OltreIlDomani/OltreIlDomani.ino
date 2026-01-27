@@ -29,7 +29,7 @@ const char PM10topic[] = "oltreildomani/centralina1/PM10";
 const char Humtopic[]  = "oltreildomani/centralina1/RH";
 const char Temptopic[] = "oltreildomani/centralina1/T";
 
-const long interval = 1000;
+const long interval = 60000;
 unsigned long previousMillis = 0;
 
 /* ============================================================================
