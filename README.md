@@ -8,3 +8,15 @@
 </div><br>
 
 > Firmware Arduino per le centraline per il rilevamento delle polveri sottili
+
+## 📦 Librerie necessarie
+
+Per compilare e caricare correttamente il firmware, assicurati di avere
+installato le seguenti librerie nell’IDE Arduino:
+
+- `Sensirion I2C SEN5X` per la gestione del sensore di polveri sottili
+- `ArduinoMqttClient` per la comunicazione MQTT
+- `Adafruit SSD1306` per il display OLED
+
+Puoi installarle facilmente dal **Library Manager** dell’Arduino IDE cercando il
+nome della libreria.
