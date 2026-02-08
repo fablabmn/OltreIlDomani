@@ -15,295 +15,287 @@
 /* ============================================================================
  *  Configurazione WiFi + MQTT
  * ========================================================================== */
-char ssid[] = SECRET_SSID;
-char pass[] = SECRET_PASS;
-int status = WL_IDLE_STATUS;
 
-WiFiClient wifiClient;
-MqttClient mqttClient(wifiClient);
+int stato_wifi = WL_IDLE_STATUS;
 
-const char broker[] = "37100lab.it";
-int port = 12883;
+// Client rete + client MQTT
+WiFiClient client_wifi;
+MqttClient client_mqtt(client_wifi);
 
-const char PM10topic[] = "oltreildomani/centralina1/PM10";
-const char Humtopic[]  = "oltreildomani/centralina1/RH";
-const char Temptopic[] = "oltreildomani/centralina1/T";
+// Broker MQTT
+#define MQTT_BROKER "37100lab.it"
+#define MQTT_PORT   12883
 
-const long interval = 60000;
-unsigned long previousMillis = 0;
+// Topic MQTT
+#define TOPIC_PM10 "oltreildomani/centralina1/PM10"
+#define TOPIC_UMID   "oltreildomani/centralina1/RH"
+#define TOPIC_TEMP "oltreildomani/centralina1/T"
+
+// Intervallo pubblicazione MQTT (ms)
+#define INTERVALLO_PUBBLICAZIONE_MS 60000
+unsigned long long millis_precedenti = 0;
+
 
 /* ============================================================================
  *  Display OLED
  * ========================================================================== */
-#define SCREEN_WIDTH  128  // Larghezza display OLED (pixel)
-#define SCREEN_HEIGHT  64  // Altezza display OLED (pixel)
 
-#define OLED_RESET     -1  // Pin reset (o -1 se condiviso col reset Arduino)
-#define SCREEN_ADDRESS 0x3C
+#define OLED_LARGHEZZA  128
+#define OLED_ALTEZZA     64
+#define OLED_PIN_RESET   -1  // -1 se condiviso col reset di Arduino
+#define OLED_INDIRIZZO   0x3C
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(OLED_LARGHEZZA, OLED_ALTEZZA, &Wire, OLED_PIN_RESET);
+
 
 /* ============================================================================
  *  Sensore (SEN54)
  * ========================================================================== */
-#define MAXBUF_REQUIREMENT 48
-#if (defined(I2C_BUFFER_LENGTH) && (I2C_BUFFER_LENGTH >= MAXBUF_REQUIREMENT)) || \
-    (defined(BUFFER_LENGTH) && (BUFFER_LENGTH >= MAXBUF_REQUIREMENT))
-#define USE_PRODUCT_INFO
-#endif
 
 SensirionI2CSen5x sen5x;
 
-float massConcentrationPm1p0;
-float massConcentrationPm2p5;
-float massConcentrationPm4p0;
-float massConcentrationPm10p0;
-float ambientHumidity;
-float ambientTemperature;
-float vocIndex;
-float noxIndex;
+// Valori letti dal sensore
+float pm1, pm2_5, pm4, pm10;
+float umidita_relativa, temperatura_ambiente;
+float indice_voc, indice_nox;
+
+// Per gli errori del sensore
+uint16_t errore;
+char messaggio_errore[256];
+
 
 /* ============================================================================
- *  Prototipi funzioni
+ *  Prototipi delle funzioni
  * ========================================================================== */
-void stampaLetture();
-void stampaIntro();
+
+void mostra_letture();
+void mostra_intro();
+
 
 /* ============================================================================
  *  Setup
  * ========================================================================== */
+
 void setup() {
   // Alimentazione "di fortuna" del display OLED tramite GPIO (pin 12)
   pinMode(12, OUTPUT);
   digitalWrite(12, HIGH);
 
-  // Inizializzazione display OLED
-  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println("[OLED] SSD1306 allocation failed");
-    while (true);  // Blocco totale: impossibile continuare senza display
-  }
-  display.clearDisplay();
-  display.display();
-  delay(100);
-
-  stampaIntro();
-
-  // Porta seriale
+  // Inizializzazione della porta seriale
   Serial.begin(9600);
+
+  // Inizializzazione display oled
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_INDIRIZZO)) {
+    Serial.println("[OLED] Allocazione SSD1306 fallita");
+  } else {
+    display.clearDisplay();
+    display.display();
+
+    delay(100);
+
+    mostra_intro();
+  }
 
   // Controllo modulo WiFi
   if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("[WIFI] Communication with WiFi module failed!");
+    Serial.println("[WIFI] Comunicazione con il modulo WiFi fallita!");
     while (true);
   }
 
   // Connessione WiFi
-  while (status != WL_CONNECTED) {
-    Serial.print("[WIFI] Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    status = WiFi.begin(ssid, pass);
-    delay(10000);
+  while (stato_wifi != WL_CONNECTED) {
+    Serial.print("[WIFI] Tentativo di connessione all'SSID: ");
+    Serial.println(SECRET_SSID);
+    stato_wifi = WiFi.begin(SECRET_SSID, SECRET_PASS);
+    delay(5000);
   }
 
-  Serial.println("[WIFI] You're connected to the network");
-  IPAddress ip = WiFi.localIP();
-  Serial.print("[WIFI] IP Address: ");
-  Serial.println(ip);
+  Serial.println("[WIFI] Connesso alla rete!");
+  Serial.print("[WIFI] Indirizzo IP: ");
+  Serial.println(WiFi.localIP());
 
   // Connessione MQTT
-  Serial.print("[MQTT] Attempting to connect to the MQTT broker: ");
-  Serial.println(broker);
+  Serial.print("[MQTT] Tentativo connessione al broker: ");
+  Serial.println(MQTT_BROKER);
 
-  if (!mqttClient.connect(broker, port)) {
-    Serial.print("[MQTT] connection failed! Error code = ");
-    Serial.println(mqttClient.connectError());
-    while (1)
-      ;
+  if (!client_mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
+    Serial.print("[MQTT] Connessione fallita! Codice errore = ");
+    Serial.println(client_mqtt.connectError());
+    while (true);
   }
 
-  Serial.println("[MQTT] You're connected to the MQTT broker!");
+  Serial.println("[MQTT] Connesso al broker!");
   Serial.println();
 
   // Inizializzazione I2C e sensore SEN5x su Wire1
   Wire1.begin();
   sen5x.begin(Wire1);
 
-  uint16_t error;
-  char errorMessage[256];
-
   // Reset sensore
-  error = sen5x.deviceReset();
-  if (error) {
-    Serial.print("[SEN54] Error trying to execute deviceReset(): ");
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
+  errore = sen5x.deviceReset();
+  if (errore) {
+    Serial.print("[SEN54] Errore durante il reset del dispositivo: ");
+    errorToString(errore, messaggio_errore, 256);
+    Serial.println(messaggio_errore);
   }
 
-  // Offset temperatura (semplice)
-  float tempOffset = 0.0;
-  error = sen5x.setTemperatureOffsetSimple(tempOffset);
-  if (error) {
-    Serial.print("[SEN54] Error trying to execute setTemperatureOffsetSimple(): ");
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
-  } else {
-    Serial.print("[SEN54] Temperature Offset set to ");
-    Serial.print(tempOffset);
-    Serial.println(" deg. Celsius (SEN54/SEN55 only");
+  // Offset temperatura
+  float offset_temperatura = 0.0;
+  errore = sen5x.setTemperatureOffsetSimple(offset_temperatura);
+  if (errore) {
+    Serial.print("[SEN54] Errore durante l'impostazione dell'offset della temperatura: ");
+    errorToString(errore, messaggio_errore, 256);
+    Serial.println(messaggio_errore);
   }
 
   // Avvio misure
-  error = sen5x.startMeasurement();
-  if (error) {
-    Serial.print("[SEN54] Error trying to execute startMeasurement(): ");
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
+  errore = sen5x.startMeasurement();
+  if (errore) {
+    Serial.print("[SEN54] Errore in durante l'inizializzazione delle misurazioni: ");
+    errorToString(errore, messaggio_errore, 256);
+    Serial.println(messaggio_errore);
   }
 }
+
 
 /* ============================================================================
  *  Loop
  * ========================================================================== */
-void loop() {
-  uint16_t error;
-  char errorMessage[256];
 
+void loop() {
   delay(1000);
 
   // Lettura valori misurati dal sensore
-  error = sen5x.readMeasuredValues(
-    massConcentrationPm1p0,
-    massConcentrationPm2p5,
-    massConcentrationPm4p0,
-    massConcentrationPm10p0,
-    ambientHumidity,
-    ambientTemperature,
-    vocIndex,
-    noxIndex
+  errore = sen5x.readMeasuredValues(
+    pm1, pm2_5, pm4, pm10,
+    umidita_relativa, temperatura_ambiente,
+    indice_voc, indice_nox
   );
 
   // Log seriale valori letti
-  if (error) {
-    Serial.print("[SEN54] Error trying to execute readMeasuredValues(): ");
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
+  if (errore) {
+    Serial.print("[SEN54] Errore durante la lettura delle misurazioni: ");
+    errorToString(errore, messaggio_errore, 256);
+    Serial.println(messaggio_errore);
   } else {
-    Serial.print("[SEN54] PM1:");
-    Serial.print(massConcentrationPm1p0);
+    Serial.print("[SEN54] PM1: ");
+    Serial.print(pm1);
     Serial.print("\t");
 
-    Serial.print("PM 2.5:");
-    Serial.print(massConcentrationPm2p5);
+    Serial.print("PM2.5: ");
+    Serial.print(pm2_5);
     Serial.print("\t");
 
-    Serial.print("PM 4:");
-    Serial.print(massConcentrationPm4p0);
+    Serial.print("PM4: ");
+    Serial.print(pm4);
     Serial.print("\t");
 
-    Serial.print("PM 10:");
-    Serial.print(massConcentrationPm10p0);
+    Serial.print("PM10: ");
+    Serial.print(pm10);
     Serial.print("\t");
 
-    Serial.print("RH:");
-    if (isnan(ambientHumidity)) {
-      Serial.print("n/a");
+    Serial.print("Umidità: ");
+    if (isnan(umidita_relativa)) {
+      Serial.print("N/A");
     } else {
-      Serial.print(ambientHumidity);
+      Serial.print(umidita_relativa);
     }
     Serial.print("\t");
 
-    Serial.print("Temp:");
-    if (isnan(ambientTemperature)) {
-      Serial.print("n/a");
+    Serial.print("Temperatura: ");
+    if (isnan(temperatura_ambiente)) {
+      Serial.print("N/A");
     } else {
-      Serial.print(ambientTemperature);
+      Serial.print(temperatura_ambiente);
     }
     Serial.println();
   }
 
   // Aggiornamento display
-  stampaLetture();
+  mostra_letture();
 
   // Gestione MQTT
-  mqttClient.poll();
+  client_mqtt.poll();
 
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+  unsigned long millis_correnti = millis();
+  if (millis_correnti - millis_precedenti >= INTERVALLO_PUBBLICAZIONE_MS) {
+    millis_precedenti = millis_correnti;
 
-    Serial.print("[MQTT] Sending message to topic: ");
-    Serial.print(PM10topic);
-    Serial.print(" : ");
-    Serial.println(massConcentrationPm10p0);
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_PM10);
+    Serial.print(" -> ");
+    Serial.println(pm10);
 
-    mqttClient.beginMessage(PM10topic);
-    mqttClient.print(massConcentrationPm10p0);
-    mqttClient.endMessage();
+    client_mqtt.beginMessage(TOPIC_PM10);
+    client_mqtt.print(pm10);
+    client_mqtt.endMessage();
 
-    Serial.print("[MQTT] Sending message to topic: ");
-    Serial.print(Humtopic);
-    Serial.print(" : ");
-    Serial.println(ambientHumidity);
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_UMID);
+    Serial.print(" -> ");
+    Serial.println(umidita_relativa);
 
-    mqttClient.beginMessage(Humtopic);
-    mqttClient.print(ambientHumidity);
-    mqttClient.endMessage();
+    client_mqtt.beginMessage(TOPIC_UMID);
+    client_mqtt.print(umidita_relativa);
+    client_mqtt.endMessage();
 
-    Serial.print("[MQTT] Sending message to topic: ");
-    Serial.print(Temptopic);
-    Serial.print(" : ");
-    Serial.println(ambientTemperature);
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_TEMP);
+    Serial.print(" -> ");
+    Serial.println(temperatura_ambiente);
 
-    mqttClient.beginMessage(Temptopic);
-    mqttClient.print(ambientTemperature);
-    mqttClient.endMessage();
+    client_mqtt.beginMessage(TOPIC_TEMP);
+    client_mqtt.print(temperatura_ambiente);
+    client_mqtt.endMessage();
 
     Serial.println();
   }
 }
 
+
 /* ============================================================================
  *  Funzioni: UI (OLED)
  * ========================================================================== */
-void stampaLetture() {
+
+void mostra_letture() {
   display.clearDisplay();
 
   display.setTextColor(SSD1306_WHITE);
   display.setTextSize(1);
   display.setCursor(0, 0);
 
-  display.println("Dati real time:");
+  display.println("Dati in tempo reale:");
   display.println("");
 
-  display.print("PM10= ");
-  display.print(massConcentrationPm10p0);
+  display.print("PM10: ");
+  display.print(pm10);
   display.println(" ug/m3");
 
-  display.print("temp= ");
-  display.print(ambientTemperature);
+  display.print("Temp: ");
+  display.print(temperatura_ambiente);
   display.println(" C");
 
-  display.print("Hum = ");
-  display.print(ambientHumidity);
+  display.print("Umid: ");
+  display.print(umidita_relativa);
   display.print(" %");
 
   display.display();
 }
 
-void stampaIntro() {
+void mostra_intro() {
   display.clearDisplay();
 
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  display.println("Verona ");
   display.println("FabLab");
+  display.println("Mantova");
 
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.println("");
   display.println("");
   display.println("");
-  display.println("       presenta..");
+  display.println("      presenta...");
 
   display.display();
   delay(3000);
