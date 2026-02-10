@@ -16,8 +16,6 @@
  *  Configurazione WiFi + MQTT
  * ========================================================================== */
 
-int stato_wifi = WL_IDLE_STATUS;
-
 // Client rete + client MQTT
 WiFiClient client_wifi;
 MqttClient client_mqtt(client_wifi);
@@ -28,7 +26,7 @@ MqttClient client_mqtt(client_wifi);
 
 // Topic MQTT
 #define TOPIC_PM10 "oltreildomani/centralina1/PM10"
-#define TOPIC_UMID   "oltreildomani/centralina1/RH"
+#define TOPIC_UMID "oltreildomani/centralina1/RH"
 #define TOPIC_TEMP "oltreildomani/centralina1/T"
 
 // Intervallo pubblicazione MQTT (ms)
@@ -41,9 +39,9 @@ unsigned long long millis_precedenti = 0;
  * ========================================================================== */
 
 #define OLED_LARGHEZZA  128
-#define OLED_ALTEZZA     64
-#define OLED_PIN_RESET   -1  // -1 se condiviso col reset di Arduino
-#define OLED_INDIRIZZO   0x3C
+#define OLED_ALTEZZA    64
+#define OLED_PIN_RESET  -1  // -1 se condiviso col reset di Arduino
+#define OLED_INDIRIZZO  0x3C
 
 Adafruit_SSD1306 display(OLED_LARGHEZZA, OLED_ALTEZZA, &Wire, OLED_PIN_RESET);
 
@@ -103,10 +101,12 @@ void setup() {
   }
 
   // Connessione WiFi
-  while (stato_wifi != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED) {
     Serial.print("[WIFI] Tentativo di connessione all'SSID: ");
     Serial.println(SECRET_SSID);
-    stato_wifi = WiFi.begin(SECRET_SSID, SECRET_PASS);
+
+    WiFi.begin(SECRET_SSID, SECRET_PASS);
+
     delay(5000);
   }
 
