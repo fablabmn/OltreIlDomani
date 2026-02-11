@@ -60,8 +60,10 @@ char messaggio_errore[256];
  *  Prototipi delle funzioni
  * ========================================================================== */
 
-void mostra_letture();
 void mostra_intro();
+void mostra_letture_su_display();
+void mostra_letture_su_seriale();
+void invia_dati();
 
 
 /* ============================================================================
@@ -172,41 +174,9 @@ void loop() {
     errorToString(errore, messaggio_errore, 256);
     Serial.println(messaggio_errore);
   } else {
-    Serial.print("[SEN54] PM1: ");
-    Serial.print(pm1);
-    Serial.print("\t");
-
-    Serial.print("PM2.5: ");
-    Serial.print(pm2_5);
-    Serial.print("\t");
-
-    Serial.print("PM4: ");
-    Serial.print(pm4);
-    Serial.print("\t");
-
-    Serial.print("PM10: ");
-    Serial.print(pm10);
-    Serial.print("\t");
-
-    Serial.print("Umidità: ");
-    if (isnan(umidita_relativa)) {
-      Serial.print("N/A");
-    } else {
-      Serial.print(umidita_relativa);
-    }
-    Serial.print("\t");
-
-    Serial.print("Temperatura: ");
-    if (isnan(temperatura_ambiente)) {
-      Serial.print("N/A");
-    } else {
-      Serial.print(temperatura_ambiente);
-    }
-    Serial.println();
+    mostra_letture_su_seriale();
+    mostra_letture_su_display();
   }
-
-  // Aggiornamento display
-  mostra_letture();
 
   // Gestione MQTT
   client_mqtt.poll();
@@ -215,43 +185,36 @@ void loop() {
   if (millis_correnti - millis_precedenti >= INTERVALLO_PUBBLICAZIONE_MS) {
     millis_precedenti = millis_correnti;
 
-    Serial.print("[MQTT] Invio sul topic: ");
-    Serial.print(TOPIC_PM10);
-    Serial.print(" -> ");
-    Serial.println(pm10);
-
-    client_mqtt.beginMessage(TOPIC_PM10);
-    client_mqtt.print(pm10);
-    client_mqtt.endMessage();
-
-    Serial.print("[MQTT] Invio sul topic: ");
-    Serial.print(TOPIC_UMID);
-    Serial.print(" -> ");
-    Serial.println(umidita_relativa);
-
-    client_mqtt.beginMessage(TOPIC_UMID);
-    client_mqtt.print(umidita_relativa);
-    client_mqtt.endMessage();
-
-    Serial.print("[MQTT] Invio sul topic: ");
-    Serial.print(TOPIC_TEMP);
-    Serial.print(" -> ");
-    Serial.println(temperatura_ambiente);
-
-    client_mqtt.beginMessage(TOPIC_TEMP);
-    client_mqtt.print(temperatura_ambiente);
-    client_mqtt.endMessage();
-
-    Serial.println();
+    invia_dati();
   }
 }
 
 
 /* ============================================================================
- *  Funzioni: UI (OLED)
+ *  Funzioni
  * ========================================================================== */
 
-void mostra_letture() {
+void mostra_intro() {
+  display.clearDisplay();
+
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.println("FabLab");
+  display.println("Mantova");
+
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.println("");
+  display.println("");
+  display.println("");
+  display.println("      presenta...");
+
+  display.display();
+  delay(3000);
+}
+
+
+void mostra_letture_su_display() {
   display.clearDisplay();
 
   display.setTextColor(SSD1306_WHITE);
@@ -276,21 +239,67 @@ void mostra_letture() {
   display.display();
 }
 
-void mostra_intro() {
-  display.clearDisplay();
+void mostra_letture_su_seriale() {
+  Serial.print("[SEN54] PM1: ");
+  Serial.print(pm1);
+  Serial.print("\t");
 
-  display.setTextSize(2);
-  display.setTextColor(SSD1306_WHITE);
-  display.println("FabLab");
-  display.println("Mantova");
+  Serial.print("PM2.5: ");
+  Serial.print(pm2_5);
+  Serial.print("\t");
 
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.println("");
-  display.println("");
-  display.println("");
-  display.println("      presenta...");
+  Serial.print("PM4: ");
+  Serial.print(pm4);
+  Serial.print("\t");
 
-  display.display();
-  delay(3000);
+  Serial.print("PM10: ");
+  Serial.print(pm10);
+  Serial.print("\t");
+
+  Serial.print("Umidità: ");
+  if (isnan(umidita_relativa)) {
+    Serial.print("N/A");
+  } else {
+    Serial.print(umidita_relativa);
+  }
+  Serial.print("\t");
+
+  Serial.print("Temperatura: ");
+  if (isnan(temperatura_ambiente)) {
+    Serial.print("N/A");
+  } else {
+    Serial.print(temperatura_ambiente);
+  }
+  Serial.println();
+}
+
+void invia_dati() {
+  Serial.print("[MQTT] Invio sul topic: ");
+  Serial.print(TOPIC_PM10);
+  Serial.print(" -> ");
+  Serial.println(pm10);
+
+  client_mqtt.beginMessage(TOPIC_PM10);
+  client_mqtt.print(pm10);
+  client_mqtt.endMessage();
+
+  Serial.print("[MQTT] Invio sul topic: ");
+  Serial.print(TOPIC_UMID);
+  Serial.print(" -> ");
+  Serial.println(umidita_relativa);
+
+  client_mqtt.beginMessage(TOPIC_UMID);
+  client_mqtt.print(umidita_relativa);
+  client_mqtt.endMessage();
+
+  Serial.print("[MQTT] Invio sul topic: ");
+  Serial.print(TOPIC_TEMP);
+  Serial.print(" -> ");
+  Serial.println(temperatura_ambiente);
+
+  client_mqtt.beginMessage(TOPIC_TEMP);
+  client_mqtt.print(temperatura_ambiente);
+  client_mqtt.endMessage();
+
+  Serial.println();
 }
