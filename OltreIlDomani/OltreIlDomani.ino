@@ -80,15 +80,9 @@ void setup() {
 
   // Inizializzazione display OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_INDIRIZZO)) {
-    Serial.println("[OLED] Allocazione del display fallita");
-  } else {
-    display.clearDisplay();
-    display.display();
-
-    delay(100);
-
-    mostra_intro();
+    Serial.println("[OLED] Allocazione del display fallita!");
   }
+  mostra_intro();
 
   // Controllo modulo WiFi
   if (WiFi.status() == WL_NO_MODULE) {
@@ -103,7 +97,7 @@ void setup() {
 
     WiFi.begin(SECRET_SSID, SECRET_PASS);
 
-    delay(5000);
+    delay(2500);
   }
 
   Serial.println("[WIFI] Connesso alla rete!");
@@ -159,7 +153,7 @@ void setup() {
  * ========================================================================== */
 
 void loop() {
-  delay(1000);
+  delay(500);
 
   // Mantieni viva la comunicazione col server MQTT
   client_mqtt.poll();
@@ -211,9 +205,8 @@ void mostra_intro() {
   display.println("      presenta...");
 
   display.display();
-  delay(3000);
+  delay(1000);
 }
-
 
 void mostra_letture_su_display() {
   display.clearDisplay();
@@ -243,34 +236,16 @@ void mostra_letture_su_display() {
 void mostra_letture_su_seriale() {
   Serial.print("[SEN54] PM1: ");
   Serial.print(pm1);
-  Serial.print("\t");
-
-  Serial.print("PM2.5: ");
+  Serial.print("\tPM2.5: ");
   Serial.print(pm2_5);
-  Serial.print("\t");
-
-  Serial.print("PM4: ");
+  Serial.print("\tPM4: ");
   Serial.print(pm4);
-  Serial.print("\t");
-
-  Serial.print("PM10: ");
+  Serial.print("\tPM10: ");
   Serial.print(pm10);
-  Serial.print("\t");
-
-  Serial.print("Umidità: ");
-  if (isnan(umidita_relativa)) {
-    Serial.print("N/A");
-  } else {
-    Serial.print(umidita_relativa);
-  }
-  Serial.print("\t");
-
-  Serial.print("Temperatura: ");
-  if (isnan(temperatura_ambiente)) {
-    Serial.print("N/A");
-  } else {
-    Serial.print(temperatura_ambiente);
-  }
+  Serial.print("\tUmidità: ");
+  Serial.print(umidita_relativa);
+  Serial.print("\tTemperatura: ");
+  Serial.print(temperatura_ambiente);
   Serial.println();
 }
 
@@ -301,6 +276,4 @@ void invia_dati() {
   client_mqtt.beginMessage(TOPIC_TEMP);
   client_mqtt.print(temperatura_ambiente);
   client_mqtt.endMessage();
-
-  Serial.println();
 }
