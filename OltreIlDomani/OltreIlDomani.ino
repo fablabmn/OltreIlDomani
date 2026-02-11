@@ -1,20 +1,10 @@
-// --- Sensore ---
-#include <SensirionI2CSen5x.h>
-
-// --- Display ---
-#include <Adafruit_SSD1306.h>
-
-// --- Rete / MQTT ---
-#include <WiFiS3.h>
-#include <ArduinoMqttClient.h>
-
-// --- Segreti / Config ---
-#include "arduino_secrets.h"
-
-
 /* ============================================================================
  *  Configurazione WiFi + MQTT
  * ========================================================================== */
+
+#include <WiFiS3.h>
+#include <ArduinoMqttClient.h>
+#include "arduino_secrets.h"
 
 // Client rete + client MQTT
 WiFiClient client_wifi;
@@ -38,6 +28,8 @@ unsigned long long millis_precedenti = 0;
  *  Display OLED
  * ========================================================================== */
 
+#include <Adafruit_SSD1306.h>
+
 #define OLED_LARGHEZZA  128
 #define OLED_ALTEZZA    64
 #define OLED_PIN_RESET  -1  // -1 se condiviso col reset di Arduino
@@ -49,6 +41,8 @@ Adafruit_SSD1306 display(OLED_LARGHEZZA, OLED_ALTEZZA, &Wire, OLED_PIN_RESET);
 /* ============================================================================
  *  Sensore (SEN54)
  * ========================================================================== */
+
+#include <SensirionI2CSen5x.h>
 
 SensirionI2CSen5x sen5x;
 
