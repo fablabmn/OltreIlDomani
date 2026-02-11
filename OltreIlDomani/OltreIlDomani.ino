@@ -19,8 +19,8 @@ MqttClient client_mqtt(client_wifi);
 #define TOPIC_UMID "oltreildomani/centralina1/RH"
 #define TOPIC_TEMP "oltreildomani/centralina1/T"
 
-// Intervallo pubblicazione MQTT (ms)
-#define INTERVALLO_PUBBLICAZIONE_MS 60000
+// Intervallo pubblicazione MQTT (in secondi)
+#define INTERVALLO_PUBBLICAZIONE 60
 unsigned long long millis_precedenti = 0;
 
 
@@ -78,9 +78,9 @@ void setup() {
   // Inizializzazione della porta seriale
   Serial.begin(9600);
 
-  // Inizializzazione display oled
+  // Inizializzazione display OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_INDIRIZZO)) {
-    Serial.println("[OLED] Allocazione SSD1306 fallita");
+    Serial.println("[OLED] Allocazione del display fallita");
   } else {
     display.clearDisplay();
     display.display();
@@ -123,7 +123,7 @@ void setup() {
   Serial.println("[MQTT] Connesso al broker!");
   Serial.println();
 
-  // Inizializzazione I2C e sensore SEN5x su Wire1
+  // Inizializzazione I2C e sensore SEN5x sulla porta QWIIC
   Wire1.begin();
   sen5x.begin(Wire1);
 
@@ -161,14 +161,17 @@ void setup() {
 void loop() {
   delay(1000);
 
-  // Lettura valori misurati dal sensore
+  // Mantieni viva la comunicazione col server MQTT
+  client_mqtt.poll();
+
+  // Leggi i valori misurati dal sensore
   errore = sen5x.readMeasuredValues(
     pm1, pm2_5, pm4, pm10,
     umidita_relativa, temperatura_ambiente,
     indice_voc, indice_nox
   );
 
-  // Log seriale valori letti
+  // Log dei valori letti in tempo reale
   if (errore) {
     Serial.print("[SEN54] Errore durante la lettura delle misurazioni: ");
     errorToString(errore, messaggio_errore, 256);
@@ -178,11 +181,9 @@ void loop() {
     mostra_letture_su_display();
   }
 
-  // Gestione MQTT
-  client_mqtt.poll();
-
-  unsigned long millis_correnti = millis();
-  if (millis_correnti - millis_precedenti >= INTERVALLO_PUBBLICAZIONE_MS) {
+  // Ogni "INTERVALLO_PUBBLICAZIONE" secondi invia i dati al server MQTT
+  unsigned long long millis_correnti = millis();
+  if (millis_correnti - millis_precedenti >= (INTERVALLO_PUBBLICAZIONE * 1000)) {
     millis_precedenti = millis_correnti;
 
     invia_dati();
