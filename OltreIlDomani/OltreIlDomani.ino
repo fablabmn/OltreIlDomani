@@ -182,6 +182,10 @@ void loop() {
 
     invia_dati();
   }
+  if (!client_mqtt.connected()) 
+  { 
+    client_mqtt.connect(MQTT_BROKER, MQTT_PORT); 
+  }
 }
 
 
