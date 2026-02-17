@@ -153,6 +153,7 @@ void setup() {
  * ========================================================================== */
 
 void loop() {
+  verifica_connessioni();
   delay(500);
 
   // Mantieni viva la comunicazione col server MQTT
@@ -182,9 +183,30 @@ void loop() {
 
     invia_dati();
   }
-  if (!client_mqtt.connected()) 
-  { 
-    client_mqtt.connect(MQTT_BROKER, MQTT_PORT); 
+}
+
+void verifica_connessioni() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WIFI] Disconnesso! Riconnessione...");
+    
+    while (WiFi.status() != WL_CONNECTED) {
+      WiFi.begin(SECRET_SSID, SECRET_PASS);
+      delay(2000);
+    }
+
+    Serial.println("[WIFI] Riconnesso!");
+  }
+
+  if (!client_mqtt.connected()) {
+    Serial.println("[MQTT] Disconnesso! Riconnessione...");
+
+    while (!client_mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
+      Serial.print("[MQTT] Errore: ");
+      Serial.println(client_mqtt.connectError());
+      delay(2000);
+    }
+
+    Serial.println("[MQTT] Riconnesso al broker!");
   }
 }
 
