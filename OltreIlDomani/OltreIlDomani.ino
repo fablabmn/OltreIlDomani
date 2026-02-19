@@ -92,38 +92,7 @@ void setup() {
   }
   mostra_intro();
 
-  // Controllo modulo WiFi
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("[WIFI] Comunicazione con il modulo WiFi fallita!");
-    while (true);
-  }
-
-  // Connessione WiFi
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print("[WIFI] Tentativo di connessione all'SSID: ");
-    Serial.println(SECRET_SSID);
-
-    WiFi.begin(SECRET_SSID, SECRET_PASS);
-
-    delay(2500);
-  }
-
-  Serial.println("[WIFI] Connesso alla rete!");
-  Serial.print("[WIFI] Indirizzo IP: ");
-  Serial.println(WiFi.localIP());
-
-  // Connessione MQTT
-  Serial.print("[MQTT] Tentativo connessione al broker: ");
-  Serial.println(MQTT_BROKER);
-
-  if (!client_mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
-    Serial.print("[MQTT] Connessione fallita! Codice errore = ");
-    Serial.println(client_mqtt.connectError());
-    while (true);
-  }
-
-  Serial.println("[MQTT] Connesso al broker!");
-  Serial.println();
+  verifica_connessioni();
 
   // Inizializzazione I2C e sensore SEN5x sulla porta QWIIC
   Wire1.begin();
