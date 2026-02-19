@@ -76,8 +76,8 @@ void setup() {
   //
   // https://github.com/arduino/ArduinoCore-renesas/issues/520
   // https://github.com/fablabmn/OltreIlDomani/issues/3
-  Wire.setTimeout(10000);
-  Wire1.setTimeout(10000);
+  Wire.setWireTimeout(10000);
+  Wire1.setWireTimeout(10000);
 
   // Alimentazione "di fortuna" del display OLED tramite GPIO (pin 12)
   pinMode(12, OUTPUT);
