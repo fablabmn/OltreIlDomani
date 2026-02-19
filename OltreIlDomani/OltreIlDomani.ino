@@ -71,6 +71,13 @@ void invia_dati();
  * ========================================================================== */
 
 void setup() {
+  // Fix di I2C per la libreria core 1.5.2 per Arduino Uno R4 WiFi
+  //
+  // https://github.com/arduino/ArduinoCore-renesas/issues/520
+  // https://github.com/fablabmn/OltreIlDomani/issues/3
+  Wire.setTimeout(10000);
+  Wire1.setTimeout(10000);
+
   // Alimentazione "di fortuna" del display OLED tramite GPIO (pin 12)
   pinMode(12, OUTPUT);
   digitalWrite(12, HIGH);
