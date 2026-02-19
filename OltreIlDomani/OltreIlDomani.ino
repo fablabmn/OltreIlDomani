@@ -60,6 +60,7 @@ char messaggio_errore[256];
  *  Prototipi delle funzioni
  * ========================================================================== */
 
+void verifica_connessioni();
 void mostra_intro();
 void mostra_letture_su_display();
 void mostra_letture_su_seriale();
@@ -192,10 +193,16 @@ void loop() {
   }
 }
 
+
+/* ============================================================================
+ *  Funzioni
+ * ========================================================================== */
+
+// TODO: Prettify
 void verifica_connessioni() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WIFI] Disconnesso! Riconnessione...");
-    
+
     while (WiFi.status() != WL_CONNECTED) {
       WiFi.begin(SECRET_SSID, SECRET_PASS);
       delay(2000);
@@ -216,11 +223,6 @@ void verifica_connessioni() {
     Serial.println("[MQTT] Riconnesso al broker!");
   }
 }
-
-
-/* ============================================================================
- *  Funzioni
- * ========================================================================== */
 
 void mostra_intro() {
   display.clearDisplay();
