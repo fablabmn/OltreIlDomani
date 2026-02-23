@@ -254,30 +254,36 @@ void mostra_letture_su_seriale() {
 }
 
 void invia_dati() {
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_PM10);
-  Serial.print(" -> ");
-  Serial.println(pm10);
+  if (!isnan(pm10)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_PM10);
+    Serial.print(" -> ");
+    Serial.println(pm10);
 
-  client_mqtt.beginMessage(TOPIC_PM10);
-  client_mqtt.print(pm10);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_PM10);
+    client_mqtt.print(pm10);
+    client_mqtt.endMessage();
+  }
 
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_UMID);
-  Serial.print(" -> ");
-  Serial.println(umidita_relativa);
+  if (!isnan(umidita_relativa)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_UMID);
+    Serial.print(" -> ");
+    Serial.println(umidita_relativa);
 
-  client_mqtt.beginMessage(TOPIC_UMID);
-  client_mqtt.print(umidita_relativa);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_UMID);
+    client_mqtt.print(umidita_relativa);
+    client_mqtt.endMessage();
+  }
 
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_TEMP);
-  Serial.print(" -> ");
-  Serial.println(temperatura_ambiente);
+  if (!isnan(temperatura_ambiente)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_TEMP);
+    Serial.print(" -> ");
+    Serial.println(temperatura_ambiente);
 
-  client_mqtt.beginMessage(TOPIC_TEMP);
-  client_mqtt.print(temperatura_ambiente);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_TEMP);
+    client_mqtt.print(temperatura_ambiente);
+    client_mqtt.endMessage();
+  }
 }
