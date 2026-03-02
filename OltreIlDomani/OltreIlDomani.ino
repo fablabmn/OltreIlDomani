@@ -60,6 +60,7 @@ char messaggio_errore[256];
  *  Prototipi delle funzioni
  * ========================================================================== */
 
+void verifica_connessioni();
 void mostra_intro();
 void mostra_letture_su_display();
 void mostra_letture_su_seriale();
@@ -91,38 +92,7 @@ void setup() {
   }
   mostra_intro();
 
-  // Controllo modulo WiFi
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("[WIFI] Comunicazione con il modulo WiFi fallita!");
-    while (true);
-  }
-
-  // Connessione WiFi
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print("[WIFI] Tentativo di connessione all'SSID: ");
-    Serial.println(SECRET_SSID);
-
-    WiFi.begin(SECRET_SSID, SECRET_PASS);
-
-    delay(2500);
-  }
-
-  Serial.println("[WIFI] Connesso alla rete!");
-  Serial.print("[WIFI] Indirizzo IP: ");
-  Serial.println(WiFi.localIP());
-
-  // Connessione MQTT
-  Serial.print("[MQTT] Tentativo connessione al broker: ");
-  Serial.println(MQTT_BROKER);
-
-  if (!client_mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
-    Serial.print("[MQTT] Connessione fallita! Codice errore = ");
-    Serial.println(client_mqtt.connectError());
-    while (true);
-  }
-
-  Serial.println("[MQTT] Connesso al broker!");
-  Serial.println();
+  verifica_connessioni();
 
   // Inizializzazione I2C e sensore SEN5x sulla porta QWIIC
   Wire1.begin();
@@ -160,6 +130,7 @@ void setup() {
  * ========================================================================== */
 
 void loop() {
+  verifica_connessioni();
   delay(500);
 
   // Mantieni viva la comunicazione col server MQTT
@@ -195,6 +166,33 @@ void loop() {
 /* ============================================================================
  *  Funzioni
  * ========================================================================== */
+
+void verifica_connessioni() {
+  // Riconettiti al Wi-Fi se la centralina viene disconnessa
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WIFI] Disconnesso! Riconnessione...");
+
+    while (WiFi.status() != WL_CONNECTED) {
+      WiFi.begin(SECRET_SSID, SECRET_PASS);
+      delay(2000);
+    }
+
+    Serial.println("[WIFI] Riconnesso!");
+  }
+
+  // Riconettiti al server MQTT se il Wi-Fi è stato disconnesso
+  if (!client_mqtt.connected()) {
+    Serial.println("[MQTT] Disconnesso! Riconnessione...");
+
+    while (!client_mqtt.connect(MQTT_BROKER, MQTT_PORT)) {
+      Serial.print("[MQTT] Errore: ");
+      Serial.println(client_mqtt.connectError());
+      delay(2000);
+    }
+
+    Serial.println("[MQTT] Riconnesso al broker!");
+  }
+}
 
 void mostra_intro() {
   display.clearDisplay();
@@ -257,30 +255,36 @@ void mostra_letture_su_seriale() {
 }
 
 void invia_dati() {
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_PM10);
-  Serial.print(" -> ");
-  Serial.println(pm10);
+  if (!isnan(pm10)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_PM10);
+    Serial.print(" -> ");
+    Serial.println(pm10);
 
-  client_mqtt.beginMessage(TOPIC_PM10);
-  client_mqtt.print(pm10);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_PM10);
+    client_mqtt.print(pm10);
+    client_mqtt.endMessage();
+  }
 
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_UMID);
-  Serial.print(" -> ");
-  Serial.println(umidita_relativa);
+  if (!isnan(umidita_relativa)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_UMID);
+    Serial.print(" -> ");
+    Serial.println(umidita_relativa);
 
-  client_mqtt.beginMessage(TOPIC_UMID);
-  client_mqtt.print(umidita_relativa);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_UMID);
+    client_mqtt.print(umidita_relativa);
+    client_mqtt.endMessage();
+  }
 
-  Serial.print("[MQTT] Invio sul topic: ");
-  Serial.print(TOPIC_TEMP);
-  Serial.print(" -> ");
-  Serial.println(temperatura_ambiente);
+  if (!isnan(temperatura_ambiente)) {
+    Serial.print("[MQTT] Invio sul topic: ");
+    Serial.print(TOPIC_TEMP);
+    Serial.print(" -> ");
+    Serial.println(temperatura_ambiente);
 
-  client_mqtt.beginMessage(TOPIC_TEMP);
-  client_mqtt.print(temperatura_ambiente);
-  client_mqtt.endMessage();
+    client_mqtt.beginMessage(TOPIC_TEMP);
+    client_mqtt.print(temperatura_ambiente);
+    client_mqtt.endMessage();
+  }
 }
