@@ -167,8 +167,8 @@ void loop() {
  *  Funzioni
  * ========================================================================== */
 
-// TODO: Prettify
 void verifica_connessioni() {
+  // Riconettiti al Wi-Fi se la centralina viene disconnessa
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WIFI] Disconnesso! Riconnessione...");
 
@@ -180,6 +180,7 @@ void verifica_connessioni() {
     Serial.println("[WIFI] Riconnesso!");
   }
 
+  // Riconettiti al server MQTT se il Wi-Fi è stato disconnesso
   if (!client_mqtt.connected()) {
     Serial.println("[MQTT] Disconnesso! Riconnessione...");
 
